@@ -1,4 +1,4 @@
-const actors = [
+const logo = [
   "images/bucks.jpg",  
   "images/Lakers.jpg",
   "images/kings.jpg",  
@@ -7,9 +7,10 @@ const actors = [
   "images/chikakobulls.jpg"   
 ];
 
-let cards = [...actors, ...actors];
+let cards = [...logo, ...logo];
 let flippedCards = [];
-let matchedCards = [];
+let matchedPairs = 0;
+let totalPairs = logo.length;
 let player1Score = 0;
 let player2Score = 0;
 let currentPlayer = 1;
@@ -42,46 +43,52 @@ function createCard(image) {
   const cardBack = document.createElement('div');
   cardBack.classList.add('card-back');
   cardBack.style.backgroundImage = 'url(images/jordan.jpg)';
-  cardBack.style.backgroundSize= 'cover';
+  cardBack.style.backgroundSize = 'cover';
   cardBack.style.backgroundPosition = 'center';
 
   cardInner.appendChild(cardFront);
   cardInner.appendChild(cardBack);
   card.appendChild(cardInner);
 
-  card.addEventListener('click', () => flipCard(card, image));
+  card.setAttribute('data-image', image);
+  card.addEventListener('click', () => flipCard(card));
   return card;
 }
 
-function flipCard(card, image) {
+function flipCard(card) {
   if (flippedCards.length < 2 && !flippedCards.includes(card) && !card.classList.contains('matched')) {
       card.classList.add('flipped');
       flippedCards.push(card);
 
       if (flippedCards.length === 2) {
-          setTimeout(checkForMatch, 800);
+          setTimeout(checkMatch, 800);
       }
   }
 }
 
-function checkForMatch() {
-  const [card1, card2] = flippedCards;
-  const image1 = card1.querySelector('.card-front').style.backgroundImage;
-  const image2 = card2.querySelector('.card-front').style.backgroundImage;
+function checkMatch() {
+  let firstCard = flippedCards[0];
+  let secondCard = flippedCards[1];
 
-  if (image1 === image2) {
-      card1.classList.add('matched');
-      card2.classList.add('matched');
-      matchedCards.push(card1, card2);
+  let isMatch = firstCard.getAttribute('data-image') === secondCard.getAttribute('data-image');
+
+  if (isMatch) {
+      firstCard.classList.add("matched");
+      secondCard.classList.add("matched");
+
       updateScore();
-  } else {
-      card1.classList.remove('flipped');
-      card2.classList.remove('flipped');
-  }
+      matchedPairs++;
 
-  flippedCards = [];
-  switchTurn();
-  checkWin();
+      checkWin();
+      resetBoard(true);  // Keep turn if matched
+  } else {
+      setTimeout(() => {
+          firstCard.classList.remove("flipped");
+          secondCard.classList.remove("flipped");
+
+          resetBoard(false); // Switch turn only if no match
+      }, 1000);
+  }
 }
 
 function updateScore() {
@@ -97,25 +104,57 @@ function updateScore() {
 function switchTurn() {
   currentPlayer = currentPlayer === 1 ? 2 : 1;
   turnIndicator.textContent = `Player ${currentPlayer}'s Turn`;
+
+  document.getElementById('player1-score').parentElement.classList.remove('active');
+  document.getElementById('player2-score').parentElement.classList.remove('active');
+
+  if (currentPlayer === 1) {
+      document.getElementById('player1-score').parentElement.classList.add('active');
+  } else {
+      document.getElementById('player2-score').parentElement.classList.add('active');
+  }
 }
 
 function checkWin() {
-  if (matchedCards.length === cards.length) {
+  if (matchedPairs === totalPairs) {
+      let winner;
+      
       if (player1Score > player2Score) {
-          resultDisplay.textContent = "Player 1 Wins!";
+          winner = 1;
       } else if (player2Score > player1Score) {
-          resultDisplay.textContent = "Player 2 Wins!";
+          winner = 2;
       } else {
-          resultDisplay.textContent = "It's a Tie!";
+          winner = 0; // Draw case
       }
-      resultDisplay.style.display = "block";
+
+      document.getElementById('player1-score').parentElement.classList.remove('active');
+      document.getElementById('player2-score').parentElement.classList.remove('active');
+
+      if (winner === 1) {
+          document.getElementById('player1-score').parentElement.classList.add('winner');
+      } else if (winner === 2) {
+          document.getElementById('player2-score').parentElement.classList.add('winner');
+      } else {
+          turnIndicator.textContent = "It's a Draw!";
+          return;
+      }
+
+      turnIndicator.textContent = `🎉 Player ${winner} Wins! 🎉`;
+  }
+}
+
+function resetBoard(keepTurn) {
+  flippedCards = []; // Fix: Clear flippedCards so next turn works
+
+  if (!keepTurn) {
+      switchTurn();
   }
 }
 
 function initGame() {
   cards = shuffle(cards);
   gameBoard.innerHTML = '';
-  matchedCards = [];
+  matchedPairs = 0;
   flippedCards = [];
   player1Score = 0;
   player2Score = 0;
@@ -128,9 +167,10 @@ function initGame() {
       const card = createCard(image);
       gameBoard.appendChild(card);
   });
+
+  document.getElementById('player1-score').parentElement.classList.add('active');
 }
 
-// New Game button functionality
 document.getElementById('new-game-btn').addEventListener('click', initGame);
 
 initGame();
